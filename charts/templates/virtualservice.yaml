@@ -1,0 +1,19 @@
+{{- if .Values.ingressGateway.enabled }}
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: {{ include "cluster-detector.fullname" . }}-vs
+spec:
+  hosts:
+    {{- range .Values.ingressGateway.hosts }}
+    - {{ . | quote }}
+    {{- end }}
+  gateways:
+    - {{ include "cluster-detector.fullname" . }}-gw
+  http:
+    - route:
+        - destination:
+            host: {{ include "cluster-detector.fullname" . }}
+            port:
+              number: {{ .Values.service.port }}
+{{- end }}

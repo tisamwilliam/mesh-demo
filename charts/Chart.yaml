@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cluster-detector
+description: Detect current cluster (A/B) by outbound connectivity and expose via ASM
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

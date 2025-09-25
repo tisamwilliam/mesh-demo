@@ -1,0 +1,15 @@
+{{- if .Values.detector.host }}
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: {{ include "cluster-detector.fullname" . }}-detector
+spec:
+  hosts:
+    - {{ .Values.detector.host | quote }}
+  ports:
+    - number: 443
+      name: tls
+      protocol: TLS
+  resolution: DNS
+  location: MESH_EXTERNAL
+{{- end }}

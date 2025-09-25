@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cluster-detector.fullname" . }}
+  labels:
+    app: {{ include "cluster-detector.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "cluster-detector.name" . }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "cluster-detector.name" . }}
+      annotations:
+        # 讓偵測請求一定走 sidecar（ASM）
+        traffic.sidecar.istio.io/includeOutboundIPRanges: "*"
+    spec:
+      volumes:
+        - name: work
+          emptyDir: {}
+        - name: webroot
+          emptyDir: {}
+        - name: script
+          configMap:
+            name: {{ include "cluster-detector.fullname" . }}-script
+            defaultMode: 0755
+      initContainers:
+        - name: detect
+          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DETECT_URL
+              value: {{ .Values.detector.url | quote }}
+            - name: FALLBACK
+              value: {{ .Values.detector.fallback | quote }}
+          command: ["/bin/sh","-c"]
+          args:
+            - >
+              /scripts/detect.sh &&
+              cp /tmp/cluster-id /work/cluster-id
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+            - name: work
+              mountPath: /work
+        - name: build-index
+          image: "{{ .Values.initImage.repository }}:{{ .Values.initImage.tag }}"
+          imagePullPolicy: IfNotPresent
+          command: ["/bin/sh","-c"]
+          args:
+            - >
+              cp /work/cluster-id /work/html/cluster-id &&
+              /scripts/build-index.sh
+          volumeMounts:
+            - name: script
+              mountPath: /scripts
+            - name: work
+              mountPath: /work
+            - name: webroot
+              mountPath: /usr/share/nginx/html
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: NGINX_PORT
+              value: "8080"
+          volumeMounts:
+            - name: webroot
+              mountPath: /usr/share/nginx/html
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}

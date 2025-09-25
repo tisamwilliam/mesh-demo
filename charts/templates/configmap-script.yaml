@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cluster-detector.fullname" . }}-script
+data:
+  detect.sh: |
+    #!/usr/bin/env sh
+    set -eu
+
+    DETECT_URL="${DETECT_URL}"
+    FALLBACK="${FALLBACK}"
+
+    echo "[detector] querying ${DETECT_URL} ..."
+    # 使用 sidecar 走 mesh 出口；若需 proxy/egress-gateway，請確保 ServiceEntry/DR 配好
+    RAW="$(curl -fsS --max-time 5 "${DETECT_URL}" || true)"
+
+    echo "[detector] raw result: ${RAW}"
+
+    RESULT="${FALLBACK}"
+
+    # 映射表：逐一比對
+    # 支援精確 IP（預設），可選簡易 CIDR 前綴模式（cidrMatch=true）
+    CIDR_MATCH="{{- if .Values.cidrMatch }}true{{ else }}false{{ end -}}"
+
+    case "${CIDR_MATCH}" in
+      true)
+        {{- range $k, $v := .Values.detector.map }}
+        echo "${RAW}" | grep -E "^{{ $k }}" >/dev/null 2>&1 && RESULT="{{ $v }}" && echo "[detector] matched {{ $k }} => {{ $v }}" && echo "${RESULT}" > /tmp/cluster-id && exit 0
+        {{- end }}
+        ;;
+      false)
+        {{- range $k, $v := .Values.detector.map }}
+        [ "${RAW}" = "{{ $k }}" ] && RESULT="{{ $v }}" && echo "[detector] matched {{ $k }} => {{ $v }}" && echo "${RESULT}" > /tmp/cluster-id && exit 0
+        {{- end }}
+        ;;
+    esac
+
+    echo "[detector] no match, fallback=${FALLBACK}"
+    echo "${RESULT}" > /tmp/cluster-id
+
+  build-index.sh: |
+    #!/usr/bin/env sh
+    set -eu
+    CLUSTER_ID="$(cat /work/cluster-id)"
+    TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+
+    cat >/usr/share/nginx/html/index.html <<EOF
+    <!doctype html>
+    <html lang="zh-Hant">
+    <head><meta charset="utf-8"><title>Cluster Detector</title></head>
+    <body>
+      <h1>Cluster Detector</h1>
+      <p>偵測結果：<strong>${CLUSTER_ID}</strong></p>
+      <p>時間（UTC）：${TS}</p>
+      <hr/>
+      <p>偵測依據：透過對外連線取得出口 IP，對照 values.yaml 的映射表。</p>
+    </body>
+    </html>
+    EOF
