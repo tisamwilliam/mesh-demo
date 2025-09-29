@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: mesh-demo
+
+resources:
+  - ../../base
+  - ./namespace.yaml
+
+helmGlobals:
+  chartHome: ../../charts
+
+helmCharts:
+  - name: charts
+    releaseName: mesh-demo
+    namespace: mesh-demo
+    valuesFile: ./values.mesh-demo.yaml
+    includeCRDs: true
