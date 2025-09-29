@@ -1,7 +1,0 @@
-resources:
-- ../base
-- mesh-demo/namespace.yaml
-
-helmGlobals:
-  chartHome: ../charts
-
