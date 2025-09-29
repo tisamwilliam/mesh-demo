@@ -1,0 +1,17 @@
+apiVersion: configsync.gke.io/v1beta1
+kind: RootSync
+metadata:
+  name: mesh-demo
+  namespace: config-management-system
+spec:
+  git:
+    auth: token
+    branch: main
+    dir: /overlays/mesh-demo
+    period: 30s
+    repo: https://github.com/tisamwilliam/mesh-demo.git
+    secretRef:
+      name: git-creds
+  override: {}
+  sourceFormat: unstructured
+  sourceType: git
