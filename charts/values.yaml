@@ -1,49 +1,27 @@
-replicaCount: 1
+clusterId: "gke-sit-a"
 
 image:
-  # 用 nginx 當靜態頁伺服器，由 initContainer 產生 index.html
-  repository: ghcr.io/nginxinc/nginx-unprivileged
+  repository: nginx
   tag: "1.27-alpine"
   pullPolicy: IfNotPresent
 
-initImage:
-  repository: curlimages/curl
-  tag: "8.10.1"
-
-# 會被 ServiceEntry 納入，避免 REGISTRY_ONLY 阻擋
-detector:
-  # 可改為你自家的 Cloud Run / Cloud Functions 網址（建議）
-  url: "https://ifconfig.me"
-  host: "ifconfig.me"
-  # 解析結果可能是 IP 或字串，這裡示範以出口 IP 判斷
-  # key = egress 公網 IP (或 CIDR 片段)，value = cluster 名稱
-  map:
-    "203.0.113.10": "cluster-a"
-    "198.51.100.20": "cluster-b"
-  # 若比對不到，顯示的預設文字
-  fallback: "unknown-cluster"
-
-# 允許用 CIDR 前綴比對（簡易版），依序比對 keys，最先符合即使用
-cidrMatch: false
-
 service:
-  type: ClusterIP
-  port: 8080
-  name: cluster-detector
-
-ingressGateway:
-  enabled: true
-  namespace: istio-system
-  name: istio-ingressgateway
+  name: web
   port: 80
-  hosts:
-    - "detector.example.com"
 
-# 若你的 mesh 設為 REGISTRY_ONLY，建議打開這個，讓外連通過 egress gateway（可選）
-egressGateway:
-  enabled: false
-  namespace: istio-system
-  name: istio-egressgateway
+# v1/v2 副本數
+replicaCount:
+  v1: 2
+  v2: 2
+
+# 灰度比例（VirtualService weights）
+traffic:
+  v1: 80
+  v2: 20
+
+# 若 namespace 不是 default，請於安裝時用 -n 指定；此處 hosts 用 FQDN 形式
+virtualService:
+  host: "web.mesh-demo.svc.cluster.local"
 
 resources: {}
 nodeSelector: {}

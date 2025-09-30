@@ -6,6 +6,7 @@ namespace: mesh-demo
 resources:
   - ../../base
   - ./namespace.yaml
+  - ./cluster-info.cm.yaml
 
 helmGlobals:
   chartHome: ../..
@@ -14,5 +15,5 @@ helmCharts:
   - name: charts
     releaseName: mesh-demo
     namespace: mesh-demo
-    valuesFile: ./values.mesh-demo.yaml
+    valuesFile: ./values.yaml
     includeCRDs: true

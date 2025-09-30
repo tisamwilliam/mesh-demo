@@ -1,0 +1,10 @@
+service:
+  name: web
+  port: 80
+
+traffic:
+  v1: 80
+  v2: 20
+
+virtualService:
+  host: "web.mesh-demo.svc.cluster.local"
