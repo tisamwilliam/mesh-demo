@@ -8,5 +8,5 @@ spec:
   - name: mesh-demo-gateway
   rules:
   - backendRefs:
-    - name: mesh-demo-svc
+    - name: web
       port: 80
