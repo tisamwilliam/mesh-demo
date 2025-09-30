@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "service-mesh-demo.fullname" . }}-v1
+  labels:
+    app.kubernetes.io/name: {{ include "service-mesh-demo.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/version: v1
+spec:
+  replicas: {{ .Values.replicaCount.v1 }}
+  selector:
+    matchLabels:
+      app: {{ .Values.service.name }}
+      version: v1
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.service.name }}
+        version: v1
+    spec:
+      initContainers:
+        - name: render
+          image: busybox:1.36
+          env:
+            - name: CLUSTER_ID
+              value: {{ .Values.clusterId | quote }}
+            - name: VERSION
+              value: "v1"
+          command: ["/bin/sh","-c"]
+          args:
+            - |
+              set -eu
+              cat > /work/index.html <<EOF
+              <!doctype html>
+              <html lang="zh-Hant"><head><meta charset="utf-8"><title>service-mesh-demo</title></head>
+              <body>
+                <h1>service-mesh-demo</h1>
+                <p>Cluster: <b>${CLUSTER_ID}</b></p>
+                <p>Version: <b>${VERSION}</b></p>
+                <p>Time (UTC): $(date -u +%Y-%m-%dT%H:%M:%SZ)</p>
+              </body></html>
+              EOF
+          volumeMounts:
+            - name: webroot
+              mountPath: /work
+      containers:
+        - name: web
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+          volumeMounts:
+            - name: webroot
+              mountPath: /usr/share/nginx/html
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: webroot
+          emptyDir: {}
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}

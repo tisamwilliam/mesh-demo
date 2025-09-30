@@ -1,11 +1,14 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "cluster-detector.fullname" . }}
+  name: {{ .Values.service.name }}
+  labels:
+    app.kubernetes.io/name: {{ include "service-mesh-demo.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
 spec:
   selector:
-    app: {{ include "cluster-detector.name" . }}
+    app: {{ .Values.service.name }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: 8080
-      name: http
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: 80
